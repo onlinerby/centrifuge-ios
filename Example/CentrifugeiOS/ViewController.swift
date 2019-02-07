@@ -38,7 +38,10 @@ class ViewController: UIViewController, CentrifugeChannelDelegate, CentrifugeCli
         let token =  Centrifuge.createToken(string: "\(user)\(timestamp)", key: secret)
         
         let creds = CentrifugeCredentials(token: token, user: user, timestamp: timestamp)
-        let url = "wss://centrifugo.herokuapp.com/connection/websocket"
+        guard let url = URL(string: "wss://centrifugo.herokuapp.com/connection/websocket") else {
+            assert(false, "Can't create url from — wss://centrifugo.herokuapp.com/connection/websocket")
+            return
+        }
         client = Centrifuge.client(url: url, creds: creds, delegate: self)
     }
     

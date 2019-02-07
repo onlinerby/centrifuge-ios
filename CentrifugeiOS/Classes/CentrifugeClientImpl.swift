@@ -8,37 +8,30 @@
 
 import Starscream
 
-typealias CentrifugeBlockingHandler = ([CentrifugeServerMessage]?, Error?) -> Void
-
-class CentrifugeClientImpl: NSObject, CentrifugeClient, WebSocketDelegate {
-    var ws: WebSocket!
-    var url: String!
-    var creds: CentrifugeCredentials!
-    var builder: CentrifugeClientMessageBuilder!
-    var parser: CentrifugeServerMessageParser!
+final class CentrifugeClientImpl: CentrifugeClient {
+    init(url: URL, credentials: CentrifugeCredentials, delegate: CentrifugeClientDelegate) {
+        self.url = url
+        self.creds = credentials
+        self.delegate = delegate
+        self.builder = CentrifugeClientMessageBuilderImpl()
+        self.parser = CentrifugeServerMessageParserImpl()
+    }
     
+    // MARK: CentrifugeClient
+    var isConnected: Bool {
+        return webSocket.isConnected
+    }
     weak var delegate: CentrifugeClientDelegate?
     
-    var messageCallbacks = [String : CentrifugeMessageHandler]()
-    var subscription = [String : CentrifugeChannelDelegate]()
-    
-    /** Handler is used to process websocket delegate method.
-     If it is not nil, it blocks default actions. */
-    var blockingHandler: CentrifugeBlockingHandler?
-    var connectionCompletion: CentrifugeMessageHandler?
-    
-    //MARK: - Public interface
-    //MARK: Server related method
     func connect(withCompletion completion: @escaping CentrifugeMessageHandler) {
+        assert(isConnected == false, "Already connected")
         blockingHandler = connectionProcessHandler
         connectionCompletion = completion
-        ws = WebSocket(url: URL(string: url)!)
-        ws.delegate = self
-        ws.connect()
+        webSocket.connect()
     }
     
     func disconnect() {
-        ws.disconnect()
+        webSocket.disconnect()
     }
     
     func ping(withCompletion completion: @escaping CentrifugeMessageHandler) {
@@ -94,7 +87,54 @@ class CentrifugeClientImpl: NSObject, CentrifugeClient, WebSocketDelegate {
         send(message: message)
     }
     
-    //MARK: - Helpers
+    private lazy var webSocket = WebSocket(with: url, delegate: self)
+    private let url: URL
+    private let creds: CentrifugeCredentials
+    private let builder: CentrifugeClientMessageBuilder
+    private let parser: CentrifugeServerMessageParser
+    
+    private var messageCallbacks = [String : CentrifugeMessageHandler]()
+    private var subscription = [String : CentrifugeChannelDelegate]()
+    
+    /** Handler is used to process websocket delegate method.
+     If it is not nil, it blocks default actions. */
+    private var blockingHandler: (([CentrifugeServerMessage]?, Error?) -> Void)?
+    private var connectionCompletion: CentrifugeMessageHandler?
+}
+
+extension CentrifugeClientImpl: WebSocketDelegate {
+    func websocketDidConnect(socket: WebSocketClient) {
+        let message = builder.buildConnectMessage(credentials: creds)
+        send(message: message)
+    }
+    
+    func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
+        guard let handler = blockingHandler else { return }
+        let error = error ?? NSError(domain: CentrifugeErrorDomain, code: CentrifugeErrorCode.CentrifugeMessageWithError.rawValue, userInfo: [NSLocalizedDescriptionKey : "Unknown disconnect error"])
+        handler(nil, error)
+    }
+    
+    func websocketDidReceiveMessage(socket: WebSocketClient, text: String) {
+        let data = text.data(using: String.Encoding.utf8)!
+        let messages = try! parser.parse(data: data)
+        
+        if let handler = blockingHandler {
+            handler(messages, nil)
+        }
+    }
+    
+    func websocketDidReceiveData(socket: WebSocketClient, data: Data) {
+        let messages = try! parser.parse(data: data)
+        
+        if let handler = blockingHandler {
+            handler(messages, nil)
+        }
+    }
+}
+
+//MARK: - Helpers
+
+private extension CentrifugeClientImpl {
     func unsubscribeFrom(channel: String) {
         subscription[channel] = nil
     }
@@ -104,7 +144,7 @@ class CentrifugeClientImpl: NSObject, CentrifugeClient, WebSocketDelegate {
                                   "method" : message.method.rawValue,
                                   "params" : message.params]
         let data = try! JSONSerialization.data(withJSONObject: dict, options: JSONSerialization.WritingOptions())
-        ws.write(data: data)
+        webSocket.write(data: data)
     }
     
     func setupConnectedState() {
@@ -226,7 +266,7 @@ class CentrifugeClientImpl: NSObject, CentrifugeClient, WebSocketDelegate {
         // Client events
         case .disconnect:
             resetState()
-            ws.disconnect()
+            webSocket.disconnect()
             delegate?.client(self, didDisconnectWithError: NSError.errorWithMessage(message: message))
         case .refresh:
             delegate?.client(self, didReceiveRefreshMessage: message)
@@ -234,34 +274,11 @@ class CentrifugeClientImpl: NSObject, CentrifugeClient, WebSocketDelegate {
             assertionFailure("Error: Invalid method type")
         }
     }
-    
-    //MARK: - WebSocketDelegate
-    
-    func websocketDidConnect(socket: WebSocketClient) {
-        let message = builder.buildConnectMessage(credentials: creds)
-        send(message: message)
-    }
-    
-    func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
-        guard let handler = blockingHandler else { return }
-        handler(nil, error)
-    }
-    
-    func websocketDidReceiveMessage(socket: WebSocketClient, text: String) {
-        let data = text.data(using: String.Encoding.utf8)!
-        let messages = try! parser.parse(data: data)
-        
-        if let handler = blockingHandler {
-            handler(messages, nil)
-        }
-    }
-    
-    func websocketDidReceiveData(socket: WebSocketClient, data: Data) {
-        let messages = try! parser.parse(data: data)
-        
-        if let handler = blockingHandler {
-            handler(messages, nil)
-        }
-    }
 }
 
+private extension WebSocket {
+    convenience init(with url: URL, delegate: WebSocketDelegate) {
+        self.init(url: url)
+        self.delegate = delegate
+    }
+}

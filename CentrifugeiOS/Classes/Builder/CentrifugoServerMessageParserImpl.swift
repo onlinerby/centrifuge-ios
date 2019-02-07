@@ -10,7 +10,7 @@ protocol CentrifugeServerMessageParser {
     func parse(data: Data) throws -> [CentrifugeServerMessage]
 }
 
-class CentrifugeServerMessageParserImpl: CentrifugeServerMessageParser {
+final class CentrifugeServerMessageParserImpl: CentrifugeServerMessageParser {
     func parse(data: Data) throws -> [CentrifugeServerMessage] {        
         do {
             let response = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions())

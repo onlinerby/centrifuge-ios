@@ -65,7 +65,7 @@ public enum CentrifugeMethod : String {
     case ping = "ping"
 }
 
-class CentrifugeWrapper<T> {
+final class CentrifugeWrapper<T> {
     var value: T
     init(theValue: T) {
         value = theValue

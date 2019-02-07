@@ -23,6 +23,9 @@ public protocol CentrifugeChannelDelegate {
 }
 
 public protocol CentrifugeClient {
+    var isConnected: Bool { get }
+    var delegate: CentrifugeClientDelegate? { get }
+
     //MARK: General methods
     func connect(withCompletion: @escaping CentrifugeMessageHandler)
     func disconnect()
@@ -42,10 +45,4 @@ public protocol CentrifugeClient {
     func unsubscribe(fromChannel: String, completion: @escaping CentrifugeMessageHandler)
     func history(ofChannel: String, completion: @escaping CentrifugeMessageHandler)
     func presence(inChannel: String, completion: @escaping CentrifugeMessageHandler)
-}
-
-protocol CentrifugeClientUnimplemented {
-    
-    var delegate: CentrifugeClientDelegate? {get set}
-    var connected: Bool {get}
 }
