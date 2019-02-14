@@ -13,7 +13,7 @@ protocol CentrifugeServerMessageParser {
 final class CentrifugeServerMessageParserImpl: CentrifugeServerMessageParser {
     func parse(data: Data) throws -> [CentrifugeServerMessage] {        
         do {
-            let response = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions())
+            let response = try JSONSerialization.jsonObject(with: data, options: [])
             var messages = [CentrifugeServerMessage]()
             
             if let infos = response as? [[String : AnyObject]] {

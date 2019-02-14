@@ -10,7 +10,7 @@ protocol CentrifugeClientMessageBuilder {
     func buildConnectMessage(credentials: CentrifugeCredentials) -> CentrifugeClientMessage
     func buildDisconnectMessage() -> CentrifugeClientMessage
     func buildSubscribeMessageTo(channel: String) -> CentrifugeClientMessage
-    func buildSubscribeMessageToPrivate(channel: String, client: String, sign: String) -> CentrifugeClientMessage
+    func buildSubscribeMessageToPrivate(channel: String, client: String, sign: String, info: [String: Any]) -> CentrifugeClientMessage
     func buildSubscribeMessageTo(channel: String, lastMessageUUID: String) -> CentrifugeClientMessage
     func buildUnsubscribeMessageFrom(channel: String) -> CentrifugeClientMessage
     func buildPresenceMessage(channel: String) -> CentrifugeClientMessage
@@ -22,12 +22,11 @@ protocol CentrifugeClientMessageBuilder {
 final class CentrifugeClientMessageBuilderImpl: CentrifugeClientMessageBuilder {
     
     func buildConnectMessage(credentials: CentrifugeCredentials) -> CentrifugeClientMessage {
-        
-        let user = credentials.user, timestamp = credentials.timestamp, token = credentials.token
-        
-        var params = ["user" : user,
-                      "timestamp" : timestamp,
-                      "token" : token]
+        var params = [
+            "user" : credentials.user,
+            "timestamp" : credentials.timestamp,
+            "token" : credentials.token
+        ]
         
         if let info = credentials.info {
             params["info"] = info
@@ -44,19 +43,26 @@ final class CentrifugeClientMessageBuilderImpl: CentrifugeClientMessageBuilder {
         return buildMessage(method: .subscribe, params: ["channel" : channel])
     }
     
-    func buildSubscribeMessageToPrivate(channel: String, client: String, sign: String) -> CentrifugeClientMessage {
-        let params = [
+    func buildSubscribeMessageToPrivate(channel: String, client: String, sign: String, info: [String: Any]) -> CentrifugeClientMessage {
+        var paramsInfo = "{}" // empty params
+        if let data = try? JSONSerialization.data(withJSONObject: info, options: []), let infoString = String(data: data, encoding: .utf8) {
+            paramsInfo = infoString
+        }
+        let params: [String: Any] = [
             "channel" : channel,
             "client" : client,
-            "sign" : sign
+            "sign" : sign,
+            "info" : paramsInfo
         ]
         return buildMessage(method: .subscribe, params: params)
     }
     
     func buildSubscribeMessageTo(channel: String, lastMessageUUID: String) -> CentrifugeClientMessage {
-        let params: [String : Any] = ["channel" : channel,
-                      "recover" : true,
-                      "last" : lastMessageUUID]
+        let params: [String : Any] = [
+            "channel" : channel,
+            "recover" : true,
+            "last" : lastMessageUUID
+        ]
         return buildMessage(method: .subscribe, params: params)
     }
     
@@ -65,8 +71,10 @@ final class CentrifugeClientMessageBuilderImpl: CentrifugeClientMessageBuilder {
     }
     
     func buildPublishMessageTo(channel: String, data: [String : Any]) -> CentrifugeClientMessage {
-        let params = ["channel" : channel,
-                      "data" : data] as [String : Any]
+        let params: [String: Any] = [
+            "channel" : channel,
+            "data" : data
+        ]
         return buildMessage(method: .publish, params: params)
     }
     
@@ -85,12 +93,7 @@ final class CentrifugeClientMessageBuilderImpl: CentrifugeClientMessageBuilder {
 
 private extension CentrifugeClientMessageBuilderImpl {
     func buildMessage(method: CentrifugeMethod, params: [String: Any]) -> CentrifugeClientMessage {
-        let uid = generateUUID()
-        let message = CentrifugeClientMessage(uid: uid, method: method, params: params)
-        return message
-    }
-    
-    func generateUUID() -> String {
-        return NSUUID().uuidString
+        let uid = NSUUID().uuidString
+        return CentrifugeClientMessage(uid: uid, method: method, params: params)
     }
 }

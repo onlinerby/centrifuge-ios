@@ -48,9 +48,9 @@ final class CentrifugeClientImpl: CentrifugeClient {
         send(message: message)
     }
     
-    func subscribe(privateChannel channel: String, client: String, sign: String, delegate: CentrifugeChannelDelegate, completion: @escaping CentrifugeMessageHandler) {
+    func subscribe(privateChannel channel: String, client: String, sign: String, info: [String: Any], delegate: CentrifugeChannelDelegate, completion: @escaping CentrifugeMessageHandler) {
         let channel = channel.hasPrefix(CentrifugePrivateChannelPrefix) ? channel : CentrifugePrivateChannelPrefix + channel
-        let message = builder.buildSubscribeMessageToPrivate(channel: channel, client: client, sign: sign)
+        let message = builder.buildSubscribeMessageToPrivate(channel: channel, client: client, sign: sign, info: info)
         subscription[channel] = delegate
         messageCallbacks[message.uid] = completion
         send(message: message)
@@ -140,11 +140,17 @@ private extension CentrifugeClientImpl {
     }
     
     func send(message: CentrifugeClientMessage) {
-        let dict: [String:Any] = ["uid" : message.uid,
-                                  "method" : message.method.rawValue,
-                                  "params" : message.params]
-        let data = try! JSONSerialization.data(withJSONObject: dict, options: JSONSerialization.WritingOptions())
-        webSocket.write(data: data)
+        let dict: [String:Any] = [
+            "uid" : message.uid,
+            "method" : message.method.rawValue,
+            "params" : message.params
+        ]
+        do {
+            let data = try JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted)
+            webSocket.write(data: data)
+        } catch let error {
+            assertionFailure("JSONSerialization error: \(error)")
+        }
     }
     
     func setupConnectedState() {
