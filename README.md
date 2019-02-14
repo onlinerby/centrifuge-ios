@@ -33,12 +33,14 @@ client.subscribe(toChannel: channel, delegate: delegate) { message, error in }
 ```
 Subscribe to private channel:
 ```swift
-client.subscribe(privateChannel: channel, client: clientString, sign: sign, delegate: delegate) { message, error in }
+client.subscribe(privateChannel: channel, client: clientString, sign: sign, info: info, delegate: delegate) { message, error in }
 ```
 Publish: 
 ```swift
 client.publish(toChannel: channel, data:  data) { message, error in }
 ```
+
+## Documentation 
 
 See the example project and [docs](https://fzambia.gitbooks.io/centrifugal/content/server/client_protocol.html) for more information.
 
@@ -50,6 +52,7 @@ See the example project and [docs](https://fzambia.gitbooks.io/centrifugal/conte
 * Version 3.0.0: Swift 3.0, iOS 9.3+, Xcode 8
 * Version 4.0.0: Swift 4.0, iOS 9.3+, Xcode 9
 * Version 5.0.0: Swift 4.0, iOS 9.3+, Xcode 9
+* Version 5.0.2: Swift 4.2, iOS 9.0+, Xcode 10
 
 ## Installation
 
