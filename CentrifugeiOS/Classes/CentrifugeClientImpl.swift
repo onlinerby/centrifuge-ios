@@ -9,10 +9,11 @@
 import Starscream
 
 final class CentrifugeClientImpl: CentrifugeClient {
-    init(url: URL, credentials: CentrifugeCredentials, delegate: CentrifugeClientDelegate) {
+    init(url: URL, credentials: CentrifugeCredentials, delegate: CentrifugeClientDelegate, callBackQueue: DispatchQueue) {
         self.url = url
         self.creds = credentials
         self.delegate = delegate
+        self.callBackQueue = callBackQueue
         self.builder = CentrifugeClientMessageBuilderImpl()
         self.parser = CentrifugeServerMessageParserImpl()
     }
@@ -87,7 +88,13 @@ final class CentrifugeClientImpl: CentrifugeClient {
         send(message: message)
     }
     
-    private lazy var webSocket = WebSocket(with: url, delegate: self)
+    private lazy var webSocket: WebSocket = {
+        let webSocket = WebSocket(with: url, delegate: self)
+        webSocket.delegate = self
+        webSocket.callbackQueue = callBackQueue
+        return webSocket
+    }()
+    private let callBackQueue: DispatchQueue
     private let url: URL
     private let creds: CentrifugeCredentials
     private let builder: CentrifugeClientMessageBuilder

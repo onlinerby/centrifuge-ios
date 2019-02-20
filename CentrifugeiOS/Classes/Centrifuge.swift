@@ -22,8 +22,8 @@ public enum CentrifugeErrorCode: Int {
 public typealias CentrifugeMessageHandler = (CentrifugeServerMessage?, Error?) -> Void
 
 public final class Centrifuge {
-    public class func client(url: URL, creds: CentrifugeCredentials, delegate: CentrifugeClientDelegate) -> CentrifugeClient {
-        return CentrifugeClientImpl(url: url, credentials: creds, delegate: delegate)
+    public class func client(url: URL, creds: CentrifugeCredentials, delegate: CentrifugeClientDelegate, callBackQueue: DispatchQueue = DispatchQueue.main) -> CentrifugeClient {
+        return CentrifugeClientImpl(url: url, credentials: creds, delegate: delegate, callBackQueue: callBackQueue)
     }
     
     public class func createToken(string: String, key: String) -> String {
